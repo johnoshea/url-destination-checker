@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run unit tests
+        run: node --test 'test/**/*.test.js'
+
+      - name: Build userscript
+        run: node scripts/build.js
+
+      - name: Syntax-check built userscript
+        run: node --check url-destination-checker.user.js
+
+      - name: Verify module syntax was stripped
+        run: |
+          node -e "
+            const c = require('fs').readFileSync('url-destination-checker.user.js','utf8');
+            if (/^\s*export\s/m.test(c)) { console.error('export survived strip'); process.exit(1); }
+            if (/^\s*import\b/m.test(c)) { console.error('import survived strip'); process.exit(1); }
+            console.log('strip ok');
+          "
