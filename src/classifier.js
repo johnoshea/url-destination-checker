@@ -60,8 +60,10 @@ function classifyYouTube(url) {
       const id = url.searchParams.get("v");
       return id && YT_VIDEO_ID.test(id) ? { kind: "youtube", videoId: id } : null;
     }
-    const segMatch = url.pathname.match(/^\/(shorts|live|embed)\/([A-Za-z0-9_-]{11})/);
-    if (segMatch) return { kind: "youtube", videoId: segMatch[2] };
+    const segMatch = url.pathname.match(/^\/(shorts|live|embed)\/([^/?#]+)/);
+    if (segMatch && YT_VIDEO_ID.test(segMatch[2])) {
+      return { kind: "youtube", videoId: segMatch[2] };
+    }
   }
 
   return null;

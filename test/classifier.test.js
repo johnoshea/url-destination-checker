@@ -116,3 +116,19 @@ test("classify: invalid youtube video id is ignored", () => {
     { kind: "ignore" },
   );
 });
+
+test("classify: youtube /shorts with 12-char segment is ignored", () => {
+  // Regression: previously the regex captured only the first 11 chars,
+  // truncating a 12-char ID into a "valid" lookup.
+  assert.deepEqual(
+    classify("https://www.youtube.com/shorts/dQw4w9WgXcQEXTRA", "https://example.com"),
+    { kind: "ignore" },
+  );
+});
+
+test("classify: youtube /shorts with trailing slash still classifies", () => {
+  assert.deepEqual(
+    classify("https://www.youtube.com/shorts/dQw4w9WgXcQ/", "https://example.com"),
+    { kind: "youtube", videoId: "dQw4w9WgXcQ" },
+  );
+});
