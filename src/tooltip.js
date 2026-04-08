@@ -76,6 +76,17 @@ export function createTooltip({ host, addStyle, onClose, onMouseEnter, onMouseLe
   el.addEventListener("mouseenter", () => onMouseEnter && onMouseEnter());
   el.addEventListener("mouseleave", () => onMouseLeave && onMouseLeave());
 
+  function setUrl(href) {
+    // Defense in depth: only http(s) URLs are linkable. Anything else
+    // (javascript:, data:, etc.) is shown as plain text.
+    if (typeof href === "string" && /^https?:\/\//i.test(href)) {
+      urlEl.href = href;
+    } else {
+      urlEl.removeAttribute("href");
+    }
+    urlEl.textContent = href;
+  }
+
   function render(data) {
     titleEl.classList.remove("udc-muted", "udc-error");
     if (data.loading) {
@@ -89,8 +100,7 @@ export function createTooltip({ host, addStyle, onClose, onMouseEnter, onMouseLe
       titleEl.classList.add("udc-error");
       if (data.finalUrl) {
         urlEl.style.display = "block";
-        urlEl.href = data.finalUrl;
-        urlEl.textContent = data.finalUrl;
+        setUrl(data.finalUrl);
       } else {
         urlEl.style.display = "none";
       }
@@ -103,8 +113,7 @@ export function createTooltip({ host, addStyle, onClose, onMouseEnter, onMouseLe
       titleEl.classList.add("udc-muted");
     }
     urlEl.style.display = "block";
-    urlEl.href = data.finalUrl;
-    urlEl.textContent = data.finalUrl;
+    setUrl(data.finalUrl);
   }
 
   function position() {
@@ -163,6 +172,10 @@ export function createTooltip({ host, addStyle, onClose, onMouseEnter, onMouseLe
 
   function hide() {
     if (!visible) return;
+    if (positionRafId) {
+      cancelAnimationFrame(positionRafId);
+      positionRafId = null;
+    }
     visible = false;
     el.style.display = "none";
     currentLink = null;
