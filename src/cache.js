@@ -22,7 +22,7 @@ export async function createCache({ storage, clock, schedule }) {
 
   function schedulePersist() {
     if (!schedule) {
-      // No scheduler available — persist synchronously (used in tests).
+      // No scheduler — fire-and-forget persist (tests use _flush() to wait).
       void persistNow();
       return;
     }
@@ -55,12 +55,13 @@ export async function createCache({ storage, clock, schedule }) {
     async get(url) {
       const entry = entries.get(url);
       if (!entry) return null;
-      if (clock.now() - entry.fetchedAt > CACHE_TTL_MS) {
+      const now = clock.now();
+      if (now - entry.fetchedAt > CACHE_TTL_MS) {
         entries.delete(url);
         schedulePersist();
         return null;
       }
-      entry.lastUsedAt = clock.now();
+      entry.lastUsedAt = now;
       schedulePersist();
       return entry;
     },
