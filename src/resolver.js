@@ -79,7 +79,105 @@ function resolveYouTube({ request, videoId, originalHref }) {
   return { promise, abort: req.abort };
 }
 
-// resolveShortener implemented in Task 7.
-function resolveShortener(_args) {
-  throw new Error("not yet implemented");
+function resolveShortener({ request, originalHref }) {
+  let currentRequest = null;
+  let aborted = false;
+
+  function abort() {
+    aborted = true;
+    if (currentRequest) currentRequest.abort();
+  }
+
+  const promise = (async () => {
+    // Step 1: Follow redirect chain manually with HEAD requests.
+    let url = originalHref;
+    for (let hop = 0; hop < MAX_REDIRECT_HOPS; hop++) {
+      if (aborted) throw new Error("aborted");
+      currentRequest = request({
+        method: "HEAD",
+        url,
+        anonymous: true,
+        redirect: "manual",
+        headers: {},
+        timeout: HEAD_TIMEOUT_MS,
+      });
+      let resp;
+      try {
+        resp = await currentRequest.promise;
+      } catch (err) {
+        throw new Error(`HEAD failed at ${url}: ${err.message || err}`);
+      }
+      if (resp.status >= 300 && resp.status < 400) {
+        const loc = headerValue(resp.responseHeaders, "location");
+        if (!loc) break; // 3xx without Location — treat current as final.
+        url = absolutize(loc, url);
+        continue;
+      }
+      // Non-3xx — current url is final.
+      break;
+    }
+    if (aborted) throw new Error("aborted");
+
+    const finalUrl = url;
+
+    // Step 2: Ranged GET title scrape.
+    currentRequest = request({
+      method: "GET",
+      url: finalUrl,
+      anonymous: true,
+      headers: {
+        Range: `bytes=0-${TITLE_SCRAPE_BYTES - 1}`,
+        Accept: "text/html",
+      },
+      timeout: GET_TIMEOUT_MS,
+      responseType: "arraybuffer",
+    });
+
+    let getResp;
+    try {
+      getResp = await currentRequest.promise;
+    } catch (err) {
+      return { finalUrl, title: null, error: `title fetch failed: ${err.message || err}` };
+    }
+
+    if (getResp.status >= 400) {
+      return { finalUrl, title: null, error: `title fetch returned ${getResp.status}` };
+    }
+
+    const charset = detectCharset(headerValue(getResp.responseHeaders, "content-type"));
+    let html;
+    try {
+      const decoder = new TextDecoder(charset, { fatal: false });
+      html = decoder.decode(getResp.response);
+    } catch {
+      // Unknown encoding — fall back to UTF-8.
+      html = new TextDecoder("utf-8", { fatal: false }).decode(getResp.response);
+    }
+
+    const title = extractTitle(html);
+    return { finalUrl, title };
+  })();
+
+  return { promise, abort };
+}
+
+function headerValue(rawHeaders, name) {
+  if (!rawHeaders) return null;
+  const lower = name.toLowerCase();
+  for (const line of rawHeaders.split(/\r?\n/)) {
+    const idx = line.indexOf(":");
+    if (idx === -1) continue;
+    if (line.slice(0, idx).trim().toLowerCase() === lower) {
+      return line.slice(idx + 1).trim();
+    }
+  }
+  return null;
+}
+
+function absolutize(location, base) {
+  try {
+    return new URL(location, base).href;
+  } catch {
+    return location;
+  }
 }
