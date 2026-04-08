@@ -134,8 +134,8 @@ export function createHoverController({ cache, resolver, tooltip, pageOrigin }) 
       state.inflightAbort = null;
       // Only update if this is still the active link.
       if (state.link !== link) return;
-      await cache.set(href, { finalUrl: data.finalUrl, title: data.title });
       if (data.error) {
+        // Don't cache errors — remote state may change; retry next hover.
         tooltip.update({
           finalUrl: data.finalUrl,
           title: data.title,
@@ -143,6 +143,7 @@ export function createHoverController({ cache, resolver, tooltip, pageOrigin }) 
           message: data.error,
         });
       } else {
+        await cache.set(href, { finalUrl: data.finalUrl, title: data.title });
         tooltip.update({ finalUrl: data.finalUrl, title: data.title });
       }
     } catch (err) {
@@ -165,6 +166,19 @@ export function createHoverController({ cache, resolver, tooltip, pageOrigin }) 
     maybeStartGrace();
   }
 
+  function notifyTooltipClosed() {
+    // The tooltip dismissed itself (Escape, click-outside). Clear any
+    // hover state pointing at the now-invisible link so the same link
+    // can trigger a new dwell without requiring the cursor to leave first.
+    abortInflight();
+    clearGrace();
+    clearDwell();
+    state.link = null;
+    state.href = null;
+    state.cursorOnLink = false;
+    state.cursorOnTooltip = false;
+  }
+
   function attach() {
     document.addEventListener("mouseover", onMouseOver, { passive: true });
     document.addEventListener("mouseout", onMouseOut, { passive: true });
@@ -174,6 +188,7 @@ export function createHoverController({ cache, resolver, tooltip, pageOrigin }) 
     attach,
     notifyTooltipMouseEnter,
     notifyTooltipMouseLeave,
+    notifyTooltipClosed,
     _state: state,
   };
 }

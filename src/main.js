@@ -84,9 +84,7 @@ function request(opts) {
   const tooltip = createTooltip({
     host: document.body,
     addStyle: GM_addStyle,
-    onClose: () => {
-      /* hover controller drives this; nothing to do here */
-    },
+    onClose: () => hoverRef && hoverRef.notifyTooltipClosed(),
     onMouseEnter: () => hoverRef && hoverRef.notifyTooltipMouseEnter(),
     onMouseLeave: () => hoverRef && hoverRef.notifyTooltipMouseLeave(),
   });
