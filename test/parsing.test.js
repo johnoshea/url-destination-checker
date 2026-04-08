@@ -24,6 +24,11 @@ test("decodeEntities: numeric hex entities", () => {
   assert.equal(decodeEntities("&#x2014;"), "—");
 });
 
+test("decodeEntities: uppercase hex prefix", () => {
+  assert.equal(decodeEntities("&#X41;&#X42;"), "AB");
+  assert.equal(decodeEntities("&#X2014;"), "—");
+});
+
 test("decodeEntities: leaves unknown entities alone", () => {
   assert.equal(decodeEntities("&unknownthing;"), "&unknownthing;");
 });
