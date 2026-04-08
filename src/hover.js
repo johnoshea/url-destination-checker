@@ -117,6 +117,8 @@ export function createHoverController({ cache, resolver, tooltip, pageOrigin }) 
   async function fire(verdict, href, link) {
     // Check cache first.
     const cached = await cache.get(href);
+    // The user may have moved off the link during the cache lookup tick.
+    if (state.link !== link) return;
     if (cached) {
       tooltip.show(link, { finalUrl: cached.finalUrl, title: cached.title });
       return;
