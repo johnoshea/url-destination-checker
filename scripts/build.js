@@ -35,6 +35,7 @@ const HEADER = `// ==UserScript==
 // @grant        GM_setValue
 // @grant        GM_addStyle
 // @noframes
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // ==/UserScript==
 `;
 
@@ -44,7 +45,10 @@ function stripModuleSyntax(src) {
   // consuming the entire file when multiple imports exist.
   let out = src.replace(/^import\b[\s\S]*?;\s*$/gm, "");
   // Strip leading `export ` from declarations.
-  out = out.replace(/^\s*export\s+(const|let|var|function|class|async\s+function)/gm, "$1");
+  out = out.replace(
+    /^\s*export\s+(const|let|var|function|class|async\s+function)/gm,
+    "$1",
+  );
   return out;
 }
 
